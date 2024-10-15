@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            border: 2px solid black;
+            display: block;
+            margin: auto;
+        }
+
+        #gameOver {
+            display: none;
+            text-align: center;
+            font-size: 24px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mazeCanvas" width="400" height="400"></canvas>
+    <canvas id="miniMap" width="100" height="100"></canvas>
+    <div id="gameOver"></div>
+
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const miniMapCanvas = document.getElementById('miniMap');
+        const miniMapCtx = miniMapCanvas.getContext('2d');
+        const mazeSize = 20;
+        const cellSize = canvas.width / mazeSize;
+        const playerSize = cellSize * 0.6;
+        const player = { x: 1, y: 1, size: playerSize }; // Start position
+        const exit = { x: mazeSize - 2, y: mazeSize - 2 }; // Exit position
+        let timeLeft = 30; // 30 seconds to complete the maze
+        let gameOver = false;
+        let intervalId;
+
+        const maze = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            // ... Add more rows to create a more complex maze
+        ];
+
+        function drawMaze() {
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    ctx.fillStyle = maze[y][x] === 1 ? 'black' : 'white';
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                }
+            }
+
+            // Draw the exit
+            ctx.fillStyle = 'green';
+            ctx.fillRect(exit.x * cellSize, exit.y * cellSize, cellSize, cellSize);
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(player.x * cellSize + (cellSize - player.size) / 2, player.y * cellSize + (cellSize - player.size) / 2, player.size, player.size);
+        }
+
+        function drawMiniMap() {
+            miniMapCtx.clearRect(0, 0, miniMapCanvas.width, miniMapCanvas.height);
+
+            // Scale the minimap
+            const scaleX = miniMapCanvas.width / canvas.width;
+            const scaleY = miniMapCanvas.height / canvas.height;
+
+            // Draw maze on minimap
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    miniMapCtx.fillStyle = maze[y][x] === 1 ? 'black' : 'white';
+                    miniMapCtx.fillRect(x * cellSize * scaleX, y * cellSize * scaleY, cellSize * scaleX, cellSize * scaleY);
+                }
+            }
+
+            // Draw player on minimap
+            miniMapCtx.fillStyle = 'blue';
+            miniMapCtx.fillRect(player.x * cellSize * scaleX, player.y * cellSize * scaleY, player.size * scaleX, player.size * scaleY);
+
+            // Draw exit on minimap
+            miniMapCtx.fillStyle = 'green';
+            miniMapCtx.fillRect(exit.x * cellSize * scaleX, exit.y * cellSize * scaleY, cellSize * scaleX, cellSize * scaleY);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function movePlayer(dx, dy) {
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            if (maze[newY] && maze[newY][newX] === 0) {
+                player.x = newX;
+                player.y = newY;
+            }
+        }
+
+        function checkWin() {
+            if (player.x === exit.x && player.y === exit.y) {
+                clearInterval(intervalId);
+                document.getElementById('gameOver').textContent = "You Win!";
+                document.getElementById('gameOver').style.display = 'block';
+                gameOver = true;
+            }
+        }
+
+        function checkTime() {
+            if (timeLeft <= 0) {
+                clearInterval(intervalId);
+                document.getElementById('gameOver').textContent = "Time's Up! You Lose!";
+                document.getElementById('gameOver').style.display = 'block';
+                gameOver = true;
+            }
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            if (timeLeft >= 0) {
+                document.getElementById('gameOver').textContent = `Time Left: ${timeLeft}s`;
+            }
+            checkTime();
+        }
+
+        function gameLoop() {
+            if (!gameOver) {
+                clearCanvas();
+                drawMaze();
+                drawPlayer();
+                drawMiniMap();
+                checkWin();
+            }
+        }
+
+        // Handle player input
+        window.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (e.key === 'w') movePlayer(0, -1);
+            if (e.key === 'a') movePlayer(-1, 0);
+            if (e.key === 's') movePlayer(0, 1);
+            if (e.key === 'd') movePlayer(1, 0);
+            gameLoop();
+        });
+
+        // Start game
+        drawMaze();
+        drawPlayer();
+        drawMiniMap();
+
+        // Start timer
+        document.getElementById('gameOver').textContent = `Time Left: ${timeLeft}s`;
+        intervalId = setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>
